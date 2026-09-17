@@ -10,7 +10,7 @@ public interface BatteryPowered {
 
     double getBatteryCapacity();
 
-    double consumeBattery(double amount) throws InsufficientResourceException;
+    double consumeBattery(double amount) throws InsufficientResourceException, InvalidOperationException;
 
     boolean hasBatteryFor(double amount);
 }

@@ -44,8 +44,7 @@ public class FireEngine extends GroundResponseUnit implements FuelPowered, Water
     @Override
     public void move(double distance) throws InvalidOperationException, InsufficientResourceException {
         consumeFuel(distance);
-        recordDistance(distance);
-        System.out.println("Fire engine " + getId() + " travelling " + distance + " km by road.");
+        super.move(distance);
     }
 
     @Override
@@ -54,10 +53,7 @@ public class FireEngine extends GroundResponseUnit implements FuelPowered, Water
         if (!hasFuelFor(roundTrip)) {
             return false;
         }
-        if ("FIRE".equals(incident.getRequiredCapability())) {
-            return waterLevel + 1e-9 >= incident.getWorkload();
-        }
-        return true;
+        return waterLevel + 1e-9 >= incident.getWorkload();
     }
 
     @Override
@@ -66,7 +62,7 @@ public class FireEngine extends GroundResponseUnit implements FuelPowered, Water
         if (!hasFuelFor(roundTrip)) {
             return "Insufficient fuel";
         }
-        if ("FIRE".equals(incident.getRequiredCapability())) {
+        if (waterLevel + 1e-9 < incident.getWorkload()) {
             return "Insufficient water";
         }
         return "Insufficient resources";
@@ -111,7 +107,10 @@ public class FireEngine extends GroundResponseUnit implements FuelPowered, Water
     }
 
     @Override
-    public double consumeFuel(double distance) throws InsufficientResourceException {
+    public double consumeFuel(double distance) throws InsufficientResourceException, InvalidOperationException {
+        if (distance < 0) {
+            throw new InvalidOperationException("Distance cannot be negative.");
+        }
         double litres = distance / KM_PER_LITRE;
         if (fuelLevel + 1e-9 < litres) {
             throw new InsufficientResourceException("Insufficient fuel for " + distance + " km.");
@@ -122,6 +121,9 @@ public class FireEngine extends GroundResponseUnit implements FuelPowered, Water
 
     @Override
     public boolean hasFuelFor(double distance) {
+        if (distance < 0) {
+            return false;
+        }
         return fuelLevel + 1e-9 >= distance / KM_PER_LITRE;
     }
 

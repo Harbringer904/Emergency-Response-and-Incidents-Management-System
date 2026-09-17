@@ -76,7 +76,7 @@ public class Main {
                         System.out.println("Battery-powered units recharged.");
                         break;
                     case 14:
-                        manager.refillAllWater(readDouble(scanner, "Water or foam amount: "));
+                        manager.refillAllWater(readDouble(scanner, "Water amount: "));
                         System.out.println("Water carriers refilled.");
                         break;
                     case 15:
@@ -110,6 +110,8 @@ public class Main {
                 System.out.println("Error: " + e.getMessage());
             } catch (NumberFormatException e) {
                 System.out.println("Error: a numeric field was not a valid number.");
+            } catch (RuntimeException e) {
+                System.out.println("Error: " + e.getMessage());
             }
         }
         scanner.close();

@@ -44,8 +44,7 @@ public class RepairVan extends GroundResponseUnit implements FuelPowered, Supply
     @Override
     public void move(double distance) throws InvalidOperationException, InsufficientResourceException {
         consumeFuel(distance);
-        recordDistance(distance);
-        System.out.println("Repair van " + getId() + " travelling " + distance + " km by road.");
+        super.move(distance);
     }
 
     @Override
@@ -54,11 +53,8 @@ public class RepairVan extends GroundResponseUnit implements FuelPowered, Supply
         if (!hasFuelFor(roundTrip)) {
             return false;
         }
-        if ("REPAIR".equals(incident.getRequiredCapability())) {
-            int needed = (int) Math.round(incident.getWorkload());
-            return supplyLevel >= needed;
-        }
-        return true;
+        int needed = (int) Math.round(incident.getWorkload());
+        return supplyLevel >= needed;
     }
 
     @Override
@@ -67,7 +63,8 @@ public class RepairVan extends GroundResponseUnit implements FuelPowered, Supply
         if (!hasFuelFor(roundTrip)) {
             return "Insufficient fuel";
         }
-        if ("REPAIR".equals(incident.getRequiredCapability())) {
+        int needed = (int) Math.round(incident.getWorkload());
+        if (supplyLevel < needed) {
             return "Insufficient supplies";
         }
         return "Insufficient resources";
@@ -112,7 +109,10 @@ public class RepairVan extends GroundResponseUnit implements FuelPowered, Supply
     }
 
     @Override
-    public double consumeFuel(double distance) throws InsufficientResourceException {
+    public double consumeFuel(double distance) throws InsufficientResourceException, InvalidOperationException {
+        if (distance < 0) {
+            throw new InvalidOperationException("Distance cannot be negative.");
+        }
         double litres = distance / KM_PER_LITRE;
         if (fuelLevel + 1e-9 < litres) {
             throw new InsufficientResourceException("Insufficient fuel for " + distance + " km.");
@@ -123,6 +123,9 @@ public class RepairVan extends GroundResponseUnit implements FuelPowered, Supply
 
     @Override
     public boolean hasFuelFor(double distance) {
+        if (distance < 0) {
+            return false;
+        }
         return fuelLevel + 1e-9 >= distance / KM_PER_LITRE;
     }
 

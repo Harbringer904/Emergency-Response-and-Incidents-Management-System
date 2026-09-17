@@ -52,8 +52,7 @@ public class Ambulance extends GroundResponseUnit implements FuelPowered, Patien
     @Override
     public void move(double distance) throws InvalidOperationException, InsufficientResourceException {
         consumeFuel(distance);
-        recordDistance(distance);
-        System.out.println("Ambulance " + getId() + " travelling " + distance + " km by road.");
+        super.move(distance);
     }
 
     @Override
@@ -124,9 +123,9 @@ public class Ambulance extends GroundResponseUnit implements FuelPowered, Patien
     }
 
     @Override
-    public double consumeFuel(double distance) throws InsufficientResourceException {
+    public double consumeFuel(double distance) throws InsufficientResourceException, InvalidOperationException {
         if (distance < 0) {
-            throw new InsufficientResourceException("Distance cannot be negative.");
+            throw new InvalidOperationException("Distance cannot be negative.");
         }
         double litres = distance / KM_PER_LITRE;
         if (fuelLevel + 1e-9 < litres) {
@@ -138,6 +137,9 @@ public class Ambulance extends GroundResponseUnit implements FuelPowered, Patien
 
     @Override
     public boolean hasFuelFor(double distance) {
+        if (distance < 0) {
+            return false;
+        }
         return fuelLevel + 1e-9 >= distance / KM_PER_LITRE;
     }
 

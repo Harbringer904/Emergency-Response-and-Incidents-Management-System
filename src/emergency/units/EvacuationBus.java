@@ -44,8 +44,7 @@ public class EvacuationBus extends GroundResponseUnit implements FuelPowered, Pa
     @Override
     public void move(double distance) throws InvalidOperationException, InsufficientResourceException {
         consumeFuel(distance);
-        recordDistance(distance);
-        System.out.println("Evacuation bus " + getId() + " travelling " + distance + " km by road.");
+        super.move(distance);
     }
 
     @Override
@@ -65,7 +64,10 @@ public class EvacuationBus extends GroundResponseUnit implements FuelPowered, Pa
         if (!hasFuelFor(2.0 * incident.getDistanceFromBase())) {
             return "Insufficient fuel";
         }
-        return "Insufficient passenger capacity";
+        if ("EVACUATION".equals(incident.getRequiredCapability())) {
+            return "Insufficient passenger capacity";
+        }
+        return "Insufficient resources";
     }
 
     @Override
@@ -107,7 +109,10 @@ public class EvacuationBus extends GroundResponseUnit implements FuelPowered, Pa
     }
 
     @Override
-    public double consumeFuel(double distance) throws InsufficientResourceException {
+    public double consumeFuel(double distance) throws InsufficientResourceException, InvalidOperationException {
+        if (distance < 0) {
+            throw new InvalidOperationException("Distance cannot be negative.");
+        }
         double litres = distance / KM_PER_LITRE;
         if (fuelLevel + 1e-9 < litres) {
             throw new InsufficientResourceException("Insufficient fuel for " + distance + " km.");
@@ -118,6 +123,9 @@ public class EvacuationBus extends GroundResponseUnit implements FuelPowered, Pa
 
     @Override
     public boolean hasFuelFor(double distance) {
+        if (distance < 0) {
+            return false;
+        }
         return fuelLevel + 1e-9 >= distance / KM_PER_LITRE;
     }
 

@@ -176,7 +176,7 @@ public class DispatchManager {
         double bestScore = 0.0;
         for (int i = 0; i < unitCount; i++) {
             ResponseUnit unit = units[i];
-            if (unit.ineligibilityReason(incident) != null) {
+            if (!unit.isAvailable() || !unit.canHandle(incident) || !unit.hasResourcesFor(incident)) {
                 continue;
             }
             double score = unit.calculateDispatchScore(incident, policy);
@@ -433,13 +433,14 @@ public class DispatchManager {
         }
         String unitFile = prefix.trim() + "_units.csv";
         String incidentFile = prefix.trim() + "_incidents.csv";
-        try {
-            PrintWriter unitOut = new PrintWriter(new FileWriter(unitFile));
+        try (PrintWriter unitOut = new PrintWriter(new FileWriter(unitFile))) {
             for (int i = 0; i < unitCount; i++) {
                 unitOut.println(units[i].toCsvRecord());
             }
-            unitOut.close();
-            PrintWriter incidentOut = new PrintWriter(new FileWriter(incidentFile));
+        } catch (IOException e) {
+            throw new InvalidOperationException("Failed to save state: " + e.getMessage());
+        }
+        try (PrintWriter incidentOut = new PrintWriter(new FileWriter(incidentFile))) {
             for (int i = 0; i < incidentCount; i++) {
                 Incident incident = incidents[i];
                 String assigned = incident.getAssignedUnitId() == null ? "" : incident.getAssignedUnitId();
@@ -448,7 +449,6 @@ public class DispatchManager {
                         + incident.getDistanceFromBase() + "," + incident.getSeverity() + ","
                         + incident.getStatus() + "," + assigned + incident.extraCsvFields());
             }
-            incidentOut.close();
         } catch (IOException e) {
             throw new InvalidOperationException("Failed to save state: " + e.getMessage());
         }
@@ -458,35 +458,65 @@ public class DispatchManager {
         if (prefix == null || prefix.trim().isEmpty()) {
             throw new InvalidOperationException("Load prefix cannot be empty.");
         }
-        clearState();
         String unitFile = prefix.trim() + "_units.csv";
         String incidentFile = prefix.trim() + "_incidents.csv";
-        try {
-            BufferedReader unitIn = new BufferedReader(new FileReader(unitFile));
+        ResponseUnit[] loadedUnits = new ResponseUnit[units.length];
+        Incident[] loadedIncidents = new Incident[incidents.length];
+        int loadedUnitCount = 0;
+        int loadedIncidentCount = 0;
+        try (BufferedReader unitIn = new BufferedReader(new FileReader(unitFile))) {
             String line = unitIn.readLine();
             while (line != null) {
                 if (!line.trim().isEmpty()) {
-                    addUnit(parseUnit(line));
+                    if (loadedUnitCount >= loadedUnits.length) {
+                        throw new InvalidOperationException("Response unit array is full.");
+                    }
+                    ResponseUnit unit = parseUnit(line);
+                    for (int i = 0; i < loadedUnitCount; i++) {
+                        if (loadedUnits[i].getId().equals(unit.getId())) {
+                            throw new InvalidOperationException(
+                                    "Malformed saved state: Duplicate unit ID: " + unit.getId());
+                        }
+                    }
+                    loadedUnits[loadedUnitCount] = unit;
+                    loadedUnitCount++;
                 }
                 line = unitIn.readLine();
             }
-            unitIn.close();
-            BufferedReader incidentIn = new BufferedReader(new FileReader(incidentFile));
-            line = incidentIn.readLine();
+        } catch (IOException e) {
+            throw new InvalidOperationException("Failed to load state: " + e.getMessage());
+        }
+        try (BufferedReader incidentIn = new BufferedReader(new FileReader(incidentFile))) {
+            String line = incidentIn.readLine();
             while (line != null) {
                 if (!line.trim().isEmpty()) {
-                    addIncident(parseIncident(line));
+                    if (loadedIncidentCount >= loadedIncidents.length) {
+                        throw new InvalidOperationException("Incident array is full.");
+                    }
+                    Incident incident = parseIncident(line);
+                    for (int i = 0; i < loadedIncidentCount; i++) {
+                        if (loadedIncidents[i].getId().equals(incident.getId())) {
+                            throw new InvalidOperationException(
+                                    "Malformed saved state: Duplicate incident ID: " + incident.getId());
+                        }
+                    }
+                    loadedIncidents[loadedIncidentCount] = incident;
+                    loadedIncidentCount++;
                 }
                 line = incidentIn.readLine();
             }
-            incidentIn.close();
         } catch (IOException e) {
-            clearState();
             throw new InvalidOperationException("Failed to load state: " + e.getMessage());
-        } catch (DuplicateIdException e) {
-            clearState();
-            throw new InvalidOperationException("Malformed saved state: " + e.getMessage());
         }
+        clearState();
+        for (int i = 0; i < loadedUnitCount; i++) {
+            units[i] = loadedUnits[i];
+        }
+        unitCount = loadedUnitCount;
+        for (int i = 0; i < loadedIncidentCount; i++) {
+            incidents[i] = loadedIncidents[i];
+        }
+        incidentCount = loadedIncidentCount;
     }
 
     private void clearState() {
@@ -528,15 +558,15 @@ public class DispatchManager {
         if (f.length < 8) {
             throw new InvalidOperationException("Malformed unit record: " + line);
         }
-        String type = f[0];
-        String id = f[1];
-        String name = f[2].replace(";", ",");
-        double speed = Double.parseDouble(f[3]);
-        double distance = Double.parseDouble(f[4]);
-        boolean available = Boolean.parseBoolean(f[5]);
-        String assigned = dashToNull(f[6]);
-        int completed = Integer.parseInt(f[7]);
         try {
+            String type = f[0];
+            String id = f[1];
+            String name = f[2].replace(";", ",");
+            double speed = Double.parseDouble(f[3]);
+            double distance = Double.parseDouble(f[4]);
+            boolean available = parseStrictBoolean(f[5], line);
+            String assigned = dashToNull(f[6]);
+            int completed = Integer.parseInt(f[7]);
             switch (type) {
                 case "AMBULANCE":
                     return new Ambulance(id, name, speed, Double.parseDouble(f[8]),
@@ -560,8 +590,8 @@ public class DispatchManager {
                 default:
                     throw new InvalidOperationException("Unknown unit type: " + type);
             }
-        } catch (NumberFormatException e) {
-            throw new InvalidOperationException("Malformed numeric field in unit record: " + line);
+        } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+            throw new InvalidOperationException("Malformed unit record: " + line);
         }
     }
 
@@ -586,10 +616,10 @@ public class DispatchManager {
                             Integer.parseInt(f[7]), Integer.parseInt(f[8]));
                 case "FIRE":
                     return new FireIncident(id, description, distance, severity, status, assigned,
-                            Double.parseDouble(f[7]), Boolean.parseBoolean(f[8]));
+                            Double.parseDouble(f[7]), parseStrictBoolean(f[8], line));
                 case "INFRASTRUCTURE":
                     return new InfrastructureIncident(id, description, distance, severity, status, assigned,
-                            Integer.parseInt(f[7]), Boolean.parseBoolean(f[8]));
+                            Integer.parseInt(f[7]), parseStrictBoolean(f[8], line));
                 case "SEARCH":
                     return new SearchIncident(id, description, distance, severity, status, assigned,
                             Integer.parseInt(f[7]), Double.parseDouble(f[8]));
@@ -599,8 +629,21 @@ public class DispatchManager {
                 default:
                     throw new InvalidOperationException("Unknown incident type: " + type);
             }
-        } catch (NumberFormatException e) {
-            throw new InvalidOperationException("Malformed numeric field in incident record: " + line);
+        } catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
+            throw new InvalidOperationException("Malformed incident record: " + line);
         }
+    }
+
+    private static boolean parseStrictBoolean(String value, String line) throws InvalidOperationException {
+        if (value != null) {
+            String trimmed = value.trim();
+            if ("true".equalsIgnoreCase(trimmed)) {
+                return true;
+            }
+            if ("false".equalsIgnoreCase(trimmed)) {
+                return false;
+            }
+        }
+        throw new InvalidOperationException("Malformed boolean in record: " + line);
     }
 }

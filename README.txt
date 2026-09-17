@@ -1,6 +1,6 @@
 1. Student name and roll number
 Student name: Krunal Patel
-Roll number: *******7
+Roll number: 20252777
 
 2. Compile
 From the A1 folder (the folder that contains src/):
@@ -40,12 +40,12 @@ DispatchManager stores mixed subtypes in ResponseUnit[] and Incident[] with unit
 5. Overriding examples
 - GroundResponseUnit.estimateArrivalTime multiplies distance/maxSpeed by trafficFactor so road delay is modelled once for every ground unit.
 - SearchDrone.estimateArrivalTime uses the base hours and then multiplies by 0.85 because a drone can fly a more direct path.
-- Ambulance.move consumes fuel, records distance, and prints an ambulance-specific road message instead of the generic ResponseUnit line.
+- Ambulance.move consumes fuel, then calls GroundResponseUnit.move so distance is recorded and the inherited road-travel message is printed. SearchDrone.move consumes battery, then calls ResponseUnit.move.
 
 Other overrides used in dispatch: canHandle, hasResourcesFor, calculateDispatchScore, performWork, getCapability, getPriorityWeight, getWorkload.
 
 6. Three polymorphism sites
-- dispatchBestUnit loops over ResponseUnit[] and calls ineligibilityReason, canHandle, hasResourcesFor, calculateDispatchScore, assignIncident and move. It never uses instanceof Ambulance / FireEngine / RepairVan / SearchDrone / EvacuationBus.
+- dispatchBestUnit loops over ResponseUnit[] and calls isAvailable, canHandle, hasResourcesFor, calculateDispatchScore, assignIncident and move. It never uses instanceof Ambulance / FireEngine / RepairVan / SearchDrone / EvacuationBus.
 - resolveIncident calls unit.performWork(incident) then unit.move(...) through a ResponseUnit reference, so boarding patients, using water, using supplies, draining drone battery, or boarding evacuees is chosen at runtime.
 - generateReport walks ResponseUnit[] / Incident[] and uses getCompletedIncidents and getPriorityWeight; listUnits / listIncidents call display() the same way.
 
@@ -103,11 +103,13 @@ EVACUATION      extras: peopleToMove,remainingSafeHours
 - DispatchPolicy defaults are lowFuel 0.25/12, lowBattery 0.30/15, lowWater 0.40/20, lowSupply 0.25/10.
 - Sample files live in the A1 folder. Use prefix sample from that folder.
 - Only the evacuation extension is included (roll number ends in 7). Flood, security, power and hazmat types are not supported.
+- loadState parses both CSV files into temporary arrays and replaces live state only after both files succeed. A missing or malformed file leaves the current in-memory fleet unchanged.
+- Negative travel distance throws InvalidOperationException and does not change fuel, battery, or total distance.
 
 11. The fifteen tests and what was observed
 Sample: two ambulances (U01 traffic 1.2, U02 traffic 1.0 and 20 L fuel), U04 low water, U07 low battery, U03/U08 identical fire engines, U11 evacuation bus, I05 with 6 patients, I11/I12 evacuations.
 
-1. Heterogeneous array. Option 19 sample, option 7. Ambulance, FireEngine, RepairVan, SearchDrone and EvacuationBus print different extra fields. Later moves print different messages (Ambulance ... by road / Fire engine ... by road / Search drone ... flying / Evacuation bus ... by road).
+1. Heterogeneous array. Option 19 sample, option 7. Ambulance, FireEngine, RepairVan, SearchDrone and EvacuationBus print different extra fields. Later moves print inherited messages (ground units: travelling by road with traffic factor; drone: Unit ... travelling ... km).
 
 2. Duplicate ID. Adding another unit U01 prints Error: Duplicate unit ID: U01. The menu keeps running.
 

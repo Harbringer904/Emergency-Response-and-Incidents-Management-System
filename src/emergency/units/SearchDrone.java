@@ -39,10 +39,11 @@ public class SearchDrone extends ResponseUnit implements BatteryPowered {
 
     @Override
     public void move(double distance) throws InvalidOperationException, InsufficientResourceException {
-        double travelCost = distance * BATTERY_PER_KM;
-        consumeBattery(travelCost);
-        recordDistance(distance);
-        System.out.println("Search drone " + getId() + " flying " + distance + " km.");
+        if (distance < 0) {
+            throw new InvalidOperationException("Distance cannot be negative.");
+        }
+        consumeBattery(distance * BATTERY_PER_KM);
+        super.move(distance);
     }
 
     @Override
@@ -97,9 +98,9 @@ public class SearchDrone extends ResponseUnit implements BatteryPowered {
     }
 
     @Override
-    public double consumeBattery(double amount) throws InsufficientResourceException {
+    public double consumeBattery(double amount) throws InsufficientResourceException, InvalidOperationException {
         if (amount < 0) {
-            throw new InsufficientResourceException("Battery amount cannot be negative.");
+            throw new InvalidOperationException("Battery amount cannot be negative.");
         }
         if (batteryLevel + 1e-9 < amount) {
             throw new InsufficientResourceException("Insufficient battery.");
@@ -110,6 +111,9 @@ public class SearchDrone extends ResponseUnit implements BatteryPowered {
 
     @Override
     public boolean hasBatteryFor(double amount) {
+        if (amount < 0) {
+            return false;
+        }
         return batteryLevel + 1e-9 >= amount;
     }
 

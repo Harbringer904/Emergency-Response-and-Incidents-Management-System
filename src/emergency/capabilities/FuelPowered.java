@@ -10,7 +10,7 @@ public interface FuelPowered {
 
     double getFuelCapacity();
 
-    double consumeFuel(double distance) throws InsufficientResourceException;
+    double consumeFuel(double distance) throws InsufficientResourceException, InvalidOperationException;
 
     boolean hasFuelFor(double distance);
 }
