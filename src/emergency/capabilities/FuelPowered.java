@@ -1,9 +1,16 @@
-public interface FuelPowered {
-    void refuel(double amount);
-    double getFuelLevel();
-    double getFuelCapacity();
-    double consumeFuel(double distance);
-    boolean hasFuelFor(double distance);
+package emergency.capabilities;
 
-    
+import emergency.exceptions.InsufficientResourceException;
+import emergency.exceptions.InvalidOperationException;
+
+public interface FuelPowered {
+    void refuel(double amount) throws InvalidOperationException;
+
+    double getFuelLevel();
+
+    double getFuelCapacity();
+
+    double consumeFuel(double distance) throws InsufficientResourceException;
+
+    boolean hasFuelFor(double distance);
 }

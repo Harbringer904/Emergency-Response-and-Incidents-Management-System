@@ -1,0 +1,9 @@
+MEDICAL,I01,Road accident,12.5,4,OPEN,,3,1
+FIRE,I02,Warehouse fire,22.0,5,OPEN,,400.0,true
+INFRASTRUCTURE,I03,Substation failure,18.0,4,OPEN,,800,true
+SEARCH,I04,Missing hiker,20.0,3,OPEN,,1,10.0
+MEDICAL,I05,Clinic overflow,8.0,2,OPEN,,6,2
+FIRE,I06,Small kitchen fire,5.0,2,OPEN,,40.0,false
+SEARCH,I07,Long range search,40.0,3,OPEN,,2,80.0
+EVACUATION,I11,Floodplain evacuation,16.0,4,OPEN,,25,1.5
+EVACUATION,I12,Mass stadium evacuation,10.0,5,OPEN,,50,0.5
