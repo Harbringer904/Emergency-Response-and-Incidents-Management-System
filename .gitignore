@@ -1,0 +1,9 @@
+docs/
+guide/
+bin/
+out/
+*.class
+.idea/
+*.iml
+Thumbs.db
+.DS_Store
