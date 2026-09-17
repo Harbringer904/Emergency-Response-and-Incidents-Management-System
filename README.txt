@@ -3,13 +3,9 @@ Student name: Krunal Patel
 Roll number: 20252777
 
 2. Compile
-From the A1 folder (the folder that contains src/):
-
 javac -d bin -encoding UTF-8 src/emergency/Main.java -sourcepath src
 
 3. Run
-From the same A1 folder:
-
 java -cp bin emergency.Main
 
 Load the bundled sample with menu option 19 and prefix: sample
